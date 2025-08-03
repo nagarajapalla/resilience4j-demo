@@ -6,6 +6,8 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
+import javax.management.RuntimeErrorException;
+
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.HttpStatusCode;
@@ -21,10 +23,11 @@ import io.github.resilience4j.retry.annotation.Retry;
 public class CircuitBreakingInterceptor implements ClientHttpRequestInterceptor{
 
 	@Override
-	@Retry(name = "retryApi", fallbackMethod = "fallback")
-	@CircuitBreaker(name="CircuitBreakerService",fallbackMethod = "fallbackCircuit")
+	@Retry(name = "#a0.getURI().getHost()", fallbackMethod = "fallback")
+	@CircuitBreaker(name="#a0.getURI().getHost()",fallbackMethod = "fallbackCircuit")
 	public ClientHttpResponse intercept(HttpRequest request, byte[] body, ClientHttpRequestExecution execution)
-			throws IOException {
+			throws ExternalCallException {
+		System.out.println("request path is : "+request.getURI().getPath());
         // Proceed with the request if the circuit is closed or half-open
 		System.err.println("---- In actual method call -----. time:"+new Date());
         
@@ -37,7 +40,7 @@ public class CircuitBreakingInterceptor implements ClientHttpRequestInterceptor{
         } catch (IOException e) {
             // Record the failure with the circuit breaker
             //circuitBreaker.onError(e); // Example using Resilience4j
-            throw e;//new RuntimeException("error from intercept method..."); // Rethrow or return a fallback in case of connection issues
+            throw new ExternalCallException(e,request);//new RuntimeException("error from intercept method..."); // Rethrow or return a fallback in case of connection issues
         }
 	}
 	
@@ -46,11 +49,23 @@ public class CircuitBreakingInterceptor implements ClientHttpRequestInterceptor{
         System.err.println("FallbackRetry executed due to: "+t.getMessage());
         //return "Fallback response: Service currently unavailable.";
         
+        ExternalCallException exception = (ExternalCallException)t;
+        
+        exception.getException();
+        HttpRequest request = exception.getRequest();
+        
         ClientHttpResponse response = new ClientHttpResponse() {
 
 			@Override
 			public InputStream getBody() throws IOException {
-				String myString = "hello from fallback method";
+				
+				String myString = "";
+				if(request.getURI().getPath().contains("welcome")) {
+					 myString = "hello from fallbackRetry method";
+				} else if (request.getURI().getPath().contains("bye")) {
+					myString = "Bye from fallbackRetry method";
+				}
+				
 				// Convert the string to a byte array using UTF-8 encoding
 	            byte[] byteArray = myString.getBytes(StandardCharsets.UTF_8);
 
@@ -98,7 +113,7 @@ public class CircuitBreakingInterceptor implements ClientHttpRequestInterceptor{
 
 			@Override
 			public InputStream getBody() throws IOException {
-				String myString = "hello from fallback method";
+				String myString = "hello from fallbackCircuit method";
 				// Convert the string to a byte array using UTF-8 encoding
 	            byte[] byteArray = myString.getBytes(StandardCharsets.UTF_8);
 
@@ -137,6 +152,4 @@ public class CircuitBreakingInterceptor implements ClientHttpRequestInterceptor{
         return response;
         
         }
-
-    
 }
