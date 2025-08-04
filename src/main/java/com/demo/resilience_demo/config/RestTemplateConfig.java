@@ -23,4 +23,5 @@ public class RestTemplateConfig {
         restTemplate.setInterceptors(interceptors);
         return restTemplate;
     }
+    
 }

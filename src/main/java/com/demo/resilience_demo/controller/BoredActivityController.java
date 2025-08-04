@@ -17,12 +17,12 @@ RestTemplate restTemplate;
 
     @GetMapping("/welcome") // Handles GET requests to /activity/random
     public String sayHi() {
-    	return restTemplate.getForObject("http://localhost:9090/welcome/tomy/page?name=value&name1=value2", String.class); // Make the GET request
+    	return restTemplate.getForObject("http://localhost:9090/welcome", String.class); // Make the GET request
     }
     
     @GetMapping("/bye") // Handles GET requests to /activity/random
     public String sayBye() {
-    	return restTemplate.getForObject("http://localhost:9090/bye/tomy/page?name=value&name1=value2", String.class); // Make the GET request
+    	return restTemplate.getForObject("http://localhost:9090/bye", String.class); // Make the GET request
     }
 }
 
